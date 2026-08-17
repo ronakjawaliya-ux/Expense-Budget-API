@@ -44,5 +44,14 @@ def update_expense(transaction_id):
 
     return {"message": "Expense not found."}, 404
 
+@app.route('/expenses/<transaction_id>', methods=['GET'])
+def get_expense(transaction_id):
+    for expense in expenses:
+        if expense["transaction_id"] == int(transaction_id):
+            return expense
+
+    return {"message": "Expense not found."}, 404
+
+
 if __name__ == "__main__":
     app.run(debug=True)

@@ -14,6 +14,11 @@ Content-Type: application/json
 
 
 ###
+DELETE http://127.0.0.1:5000/expenses
+Content-Type: application/json
+
+
+###
 PUT http://127.0.0.1:5000/expenses/1
 Content-Type: application/json
 
@@ -22,3 +27,8 @@ Content-Type: application/json
     "category": "Food",
     "date": "2026-08-17"
 }
+
+
+###
+GET http://127.0.0.1:5000/expenses/1
+Content-Type: application/json
