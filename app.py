@@ -31,5 +31,18 @@ def delete_expense(transaction_id):
     return {"message": "Expense not found."}, 404
 
 
+@app.route('/expenses/<transaction_id>', methods=['PUT'])
+def update_expense(transaction_id):
+    data = request.get_json()
+
+    for expense in expenses:
+        if expense["transaction_id"] == int(transaction_id):
+            expense["amount"] = data["amount"]
+            expense["category"] = data["category"]
+            expense["date"] = data["date"]
+            return {"message": "Expense updated successfully!"}
+
+    return {"message": "Expense not found."}, 404
+
 if __name__ == "__main__":
     app.run(debug=True)
