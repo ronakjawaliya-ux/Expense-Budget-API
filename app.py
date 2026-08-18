@@ -1,17 +1,36 @@
 from flask import Flask, request
+from datetime import datetime
 
 app = Flask(__name__)
 
 expenses = []
+next_transaction_id = 1
 
 @app.route('/')
 def home():
     return "Expense Budget API is running!"
 
+
 @app.route('/expenses', methods=['POST'])
 def add_expense():
     data = request.get_json()
-    data["transaction_id"] = len(expenses) + 1
+    if "amount" not in data or "category" not in data or "date" not in data:
+        return {"message": "Missing required fields."}, 400
+
+    if not isinstance(data["amount"], int) and not isinstance(data["amount"], float):
+        return {"message": "Amount must be a number."}, 400
+
+    if not isinstance(data["category"], str):
+        return {"message": "Category must be a string."}, 400
+
+    try:
+        datetime.strptime(data["date"], "%Y-%m-%d")
+    except ValueError:
+        return {"message": "Date must be in YYYY-MM-DD format."}, 400
+
+    global next_transaction_id
+    data["transaction_id"] = next_transaction_id
+    next_transaction_id +=1
     expenses.append(data)
     return data
 
