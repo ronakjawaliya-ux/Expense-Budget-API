@@ -1,10 +1,31 @@
 from flask import Flask, request
 from datetime import datetime
+import sqlite3
+
 
 app = Flask(__name__)
 
-expenses = []
-next_transaction_id = 1
+DATABASE = "expense_budget.db"
+
+def connect_database():
+    conn = sqlite3.connect(DATABASE)
+    return conn
+
+
+def create_table():
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute("""CREATE TABLE IF NOT EXISTS expenses (
+                       transaction_id INTEGER PRIMARY KEY,
+                       amount REAL ,
+                       category TEXT ,
+                       date TEXT 
+                       )
+                """)
+
+    conn.commit()
+    conn.close()
+
 
 @app.route('/')
 def home():
@@ -28,9 +49,15 @@ def add_expense():
     except ValueError:
         return {"message": "Date must be in YYYY-MM-DD format."}, 400
 
-    global next_transaction_id
-    data["transaction_id"] = next_transaction_id
-    next_transaction_id +=1
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute("""INSERT INTO expenses (amount, category, date)
+               VALUES (?, ?, ?)""",
+                (data["amount"], data["category"], data["date"])
+                )
+    conn.commit()
+    transaction_id = cur.lastrowid
+    data["transaction_id"] = transaction_id
     expenses.append(data)
     return data
 
@@ -104,6 +131,7 @@ def get_expense(transaction_id):
 
     return {"message": "Expense not found."}, 404
 
+create_table()
 
 if __name__ == "__main__":
     app.run(debug=True)

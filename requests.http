@@ -4,8 +4,10 @@ Content-Type: application/json
 {
     "amount": 500,
     "category": "Food",
-    "date": "2026-08-21"
+    "date": "2026-08-20",
+    "transaction_id": 1
 }
+
 
 
 ###
