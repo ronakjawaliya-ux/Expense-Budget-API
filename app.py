@@ -34,7 +34,9 @@ def home():
 
 @app.route('/expenses', methods=['POST'])
 def add_expense():
+    
     data = request.get_json()
+    
     if "amount" not in data or "category" not in data or "date" not in data:
         return {"message": "Missing required fields."}, 400
 
@@ -51,20 +53,37 @@ def add_expense():
 
     conn = connect_database()
     cur = conn.cursor()
+    
     cur.execute("""INSERT INTO expenses (amount, category, date)
                VALUES (?, ?, ?)""",
                 (data["amount"], data["category"], data["date"])
                 )
+    
     conn.commit()
     transaction_id = cur.lastrowid
     data["transaction_id"] = transaction_id
-    expenses.append(data)
     return data
+
 
 
 @app.route('/expenses', methods=['GET'])
 def get_expenses():
-    return expenses
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute(("""SELECT * FROM expenses"""))
+    rows = cur.fetchall()
+    expense_data = []
+    for row in rows:
+        expense = {
+            "transaction_id": row[0],
+            "amount": row[1],
+            "category": row[2],
+            "date": row[3]
+        }
+        expense_data.append(expense)
+    conn.close()
+    return expense_data
+
 
 
 @app.route('/expenses/<transaction_id>', methods=['DELETE'])
@@ -74,19 +93,35 @@ def delete_expense(transaction_id):
         transaction_id = int(transaction_id)
     except ValueError:
         return {"message": "Transaction id must be an integer."}, 400
+    
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute(
+    """SELECT * FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    
+    row = cur.fetchone()
+    
+    if row is None:
+        conn.close()
+        return {"message": "Expense not found."}, 404
+    
+    cur.execute(
+    """DELETE FROM expenses WHERE transaction_id = ?""", (transaction_id,))
 
-    for expense in expenses:
-        if expense["transaction_id"] == transaction_id:
-            expenses.remove(expense)
-            return {"message": "Expense deleted successfully!"}
+    conn.commit()
+    conn.close()
+    
+    return{"message": "Expense deleted successfully!"}
 
-    return {"message": "Expense not found."}, 404
 
 
 @app.route('/expenses/<transaction_id>', methods=['PUT'])
 def update_expense(transaction_id):
 
     data = request.get_json()
+    
+    if data is None:
+        return {"message": "Request body must contain JSON data."}, 400
 
     if "amount" not in data or "category" not in data or "date" not in data:
         return {"message": "Missing required fields."}, 400
@@ -107,14 +142,25 @@ def update_expense(transaction_id):
     except ValueError:
         return {"message": "Transaction id must be an integer."}, 400
 
-    for expense in expenses:
-        if expense["transaction_id"] == transaction_id:
-            expense["amount"] = data["amount"]
-            expense["category"] = data["category"]
-            expense["date"] = data["date"]
-            return {"message": "Expense updated successfully!"}
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    
+    row = cur.fetchone()
 
-    return {"message": "Expense not found."}, 404
+    if row is None:
+        conn.close()
+        return {"message": "Expense not found."}, 404
+    
+    cur.execute("""
+        UPDATE expenses
+        SET amount = ?, category = ?, date = ?
+        WHERE transaction_id = ?
+    """, (data["amount"], data["category"], data["date"], transaction_id))
+    
+    conn.commit()
+    conn.close()
+    return {"message": "Expense updated successfully!"}
 
 
 @app.route('/expenses/<transaction_id>', methods=['GET'])
@@ -124,12 +170,26 @@ def get_expense(transaction_id):
         transaction_id = int(transaction_id)
     except ValueError:
         return {"message": "Transaction id must be an integer."}, 400
+    
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    
+    row = cur.fetchone()
+    
+    if row is None:
+        conn.close()
+        return {"message": "Expense not found."}, 404
+    
+    expense = {
+        "transaction_id": row[0],
+        "amount": row[1],
+        "category": row[2],
+        "date": row[3]
+    }
 
-    for expense in expenses:
-        if expense["transaction_id"] == transaction_id:
-            return expense
-
-    return {"message": "Expense not found."}, 404
+    conn.close()
+    return expense
 
 create_table()
 
