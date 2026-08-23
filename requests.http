@@ -2,20 +2,19 @@ POST http://127.0.0.1:5000/expenses
 Content-Type: application/json
 
 {
-    "amount": 500,
-    "category": "Food",
-    "date": "22-08-2026"
+    "amount": 1200,
+    "category": "Travel",
+    "date": "2026-08-24"
 }
 
 
-
 ###
-GET http://127.0.0.1:5000/expenses
+GET http://127.0.0.1:5000/expenses?min_amount=1000&max_amount=500
 Content-Type: application/json
 
 
 ###
-DELETE http://127.0.0.1:5000/expenses/999
+DELETE http://127.0.0.1:5000/expenses/3
 Content-Type: application/json
 
 

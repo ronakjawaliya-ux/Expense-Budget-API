@@ -68,9 +68,59 @@ def add_expense():
 
 @app.route('/expenses', methods=['GET'])
 def get_expenses():
+    
+    category = request.args.get("category")
+    date = request.args.get("date")
+    
+    if date:
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            return {"message": "Date must be in YYYY-MM-DD format."}, 400
+        
+    min_amount = request.args.get("min_amount")
+    max_amount = request.args.get("max_amount")
+    
+    if min_amount:
+        try:
+            min_amount = float(min_amount)
+        except ValueError:
+            return {"message": "min_amount must be a number."}, 400
+    
+    if max_amount:
+        try:
+            max_amount = float(max_amount)
+        except ValueError:
+            return {"message": "max_amount must be a number."}, 400
+    
+    if min_amount is not None and max_amount is not None:
+        if min_amount > max_amount:
+            return {"message": "min_amount cannot be greater than max_amount."}, 400
+    
     conn = connect_database()
     cur = conn.cursor()
-    cur.execute(("""SELECT * FROM expenses"""))
+    
+    query = "SELECT * FROM expenses WHERE 1=1"
+    params = []
+    
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+    
+    if date:
+        query += " AND date = ?"
+        params.append(date)
+    
+    if min_amount is not None:
+        query += " AND amount >= ?"
+        params.append(min_amount)
+    
+    if max_amount is not None:
+        query += " AND amount <= ?"
+        params.append(max_amount)
+    
+    cur.execute(query, params)
+    
     rows = cur.fetchall()
     expense_data = []
     for row in rows:
@@ -81,6 +131,7 @@ def get_expenses():
             "date": row[3]
         }
         expense_data.append(expense)
+    
     conn.close()
     return expense_data
 
