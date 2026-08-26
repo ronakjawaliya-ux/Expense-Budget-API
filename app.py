@@ -137,6 +137,25 @@ def get_expenses():
 
 
 
+@app.route('/expenses/statistics', methods=['GET'])
+def expense_statistics():
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute("""SELECT COUNT(*), SUM(amount), AVG(amount), MAX(amount), MIN(amount)
+                FROM expenses""")
+    
+    row = cur.fetchone()
+    conn.close()
+    
+    return {"total_expenses": row[0],
+            "total_amount": row[1],
+            "average_amount": row[2],
+            "highest_amount": row[3],
+            "lowest_amount": row[4]
+    }
+
+
+
 @app.route('/expenses/<transaction_id>', methods=['DELETE'])
 def delete_expense(transaction_id):
 
