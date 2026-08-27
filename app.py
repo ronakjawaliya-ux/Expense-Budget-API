@@ -156,6 +156,29 @@ def expense_statistics():
 
 
 
+@app.route('/expenses/category-summary', methods=['GET'])
+def category_summary():
+    conn = connect_database()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT category, SUM(amount)
+        FROM expenses
+        GROUP BY category
+    """)
+
+    rows = cur.fetchall()
+    conn.close()
+
+    category_data = {}
+
+    for row in rows:
+        category_data[row[0]] = row[1]
+
+    return category_data
+
+
+
 @app.route('/expenses/<transaction_id>', methods=['DELETE'])
 def delete_expense(transaction_id):
 
