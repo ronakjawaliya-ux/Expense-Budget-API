@@ -22,7 +22,13 @@ def create_table():
                        date TEXT 
                        )
                 """)
-
+    
+    cur.execute("""CREATE TABLE IF NOT EXISTS budget (
+                       budget_id INTEGER PRIMARY KEY,
+                       amount REAL
+                       )
+                """)
+    
     conn.commit()
     conn.close()
 
@@ -63,6 +69,42 @@ def add_expense():
     transaction_id = cur.lastrowid
     data["transaction_id"] = transaction_id
     return data
+
+
+
+@app.route('/budget', methods=['POST'])
+def set_budget():
+    
+    data = request.get_json()
+    
+    if "amount" not in data:
+        return {"message": "Missing required field."}, 400
+
+    if not isinstance(data["amount"], int) and not isinstance(data["amount"], float):
+        return {"message": "Amount must be a number."}, 400
+    
+    conn = connect_database()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT * FROM budget")
+    row = cur.fetchone()
+    
+    if row is None:
+        cur.execute("""
+            INSERT INTO budget (amount)
+            VALUES (?)
+        """,(data["amount"],))
+    else:
+        cur.execute("""
+            UPDATE budget
+            SET amount = ?
+            WHERE budget_id = ?
+        """, (data["amount"], row[0]))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Budget set successfully!"}
 
 
 
@@ -176,6 +218,29 @@ def category_summary():
         category_data[row[0]] = row[1]
 
     return category_data
+
+
+
+@app.route('/budget', methods=['GET'])
+def get_budget():
+
+    conn = connect_database()
+    cur = conn.cursor()
+
+    cur.execute("""SELECT * FROM budget""")
+    row = cur.fetchone()
+
+    if row is None:
+        conn.close()
+        return {"message": "Budget not found."}, 404
+
+    budget = {
+        "budget_id": row[0],
+        "amount": row[1],
+    }
+
+    conn.close()
+    return budget
 
 
 
