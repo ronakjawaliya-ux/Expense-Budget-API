@@ -38,6 +38,7 @@ def home():
     return "Expense Budget API is running!"
 
 
+
 @app.route('/expenses', methods=['POST'])
 def add_expense():
     
@@ -68,6 +69,7 @@ def add_expense():
     conn.commit()
     transaction_id = cur.lastrowid
     data["transaction_id"] = transaction_id
+    conn.close()
     return data
 
 
@@ -244,6 +246,64 @@ def get_budget():
 
 
 
+@app.route('/budget/alert', methods=['GET'])
+def budget_alert():
+    
+    conn = connect_database()
+    cur = conn.cursor()
+    
+    cur.execute("""
+                SELECT amount 
+                FROM budget
+    """)
+    
+    row = cur.fetchone()
+    
+    
+    if row is None:
+        conn.close()
+        return {"message": "Budget not found."}, 404
+    
+    
+    budget = row[0]
+    
+    
+    cur.execute("""
+                SELECT SUM(amount)
+                FROM expenses
+    """)
+    
+    expense_row = cur.fetchone()
+    
+    
+    if expense_row[0] is None:
+        spent = 0
+    else:
+        spent = expense_row[0]
+    
+    
+    percentage_used = round((spent / budget) * 100, 2)
+    
+    
+    if percentage_used < 80:
+        message = "Budget is under control."
+    elif percentage_used < 100:
+        message = "Warning: You are approaching your budget."
+    else:
+        message = "Alert: You have exceeded your budget."
+
+
+    conn.close()
+    
+    return {
+        "budget": budget,
+        "spent": spent,
+        "percentage_used": percentage_used,
+        "message": message
+    }
+    
+    
+    
 @app.route('/expenses/<transaction_id>', methods=['DELETE'])
 def delete_expense(transaction_id):
 
@@ -321,6 +381,7 @@ def update_expense(transaction_id):
     return {"message": "Expense updated successfully!"}
 
 
+
 @app.route('/expenses/<transaction_id>', methods=['GET'])
 def get_expense(transaction_id):
 
@@ -349,7 +410,11 @@ def get_expense(transaction_id):
     conn.close()
     return expense
 
+
+
 create_table()
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
