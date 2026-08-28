@@ -18,6 +18,25 @@ Content-Type: application/json
 
 
 ###
+POST http://127.0.0.1:5000/register
+Content-Type: application/json
+
+{
+    "username": "ronak2",
+    "password": "123456"
+}
+
+
+###
+POST http://127.0.0.1:5000/login
+Content-Type: application/json
+
+{
+    "username": "ronak2",
+    "password": "123457"
+}
+
+###
 GET http://127.0.0.1:5000/expenses?min_amount=1000&max_amount=500
 Content-Type: application/json
 

@@ -1,6 +1,7 @@
 from flask import Flask, request
 from datetime import datetime
 import sqlite3
+import hashlib
 
 
 app = Flask(__name__)
@@ -15,22 +16,31 @@ def connect_database():
 def create_table():
     conn = connect_database()
     cur = conn.cursor()
+
     cur.execute("""CREATE TABLE IF NOT EXISTS expenses (
-                       transaction_id INTEGER PRIMARY KEY,
-                       amount REAL ,
-                       category TEXT ,
-                       date TEXT 
-                       )
+                        transaction_id INTEGER PRIMARY KEY,
+                        amount REAL ,
+                        category TEXT ,
+                        date TEXT
+                        )
                 """)
-    
+
     cur.execute("""CREATE TABLE IF NOT EXISTS budget (
-                       budget_id INTEGER PRIMARY KEY,
-                       amount REAL
-                       )
+                        budget_id INTEGER PRIMARY KEY,
+                        amount REAL
+                        )
                 """)
-    
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS users (
+                        user_id INTEGER PRIMARY KEY,
+                        username TEXT UNIQUE,
+                        password_hash TEXT
+                        )
+                """)
+
     conn.commit()
     conn.close()
+
 
 
 @app.route('/')
@@ -39,11 +49,82 @@ def home():
 
 
 
+@app.route('/register', methods=['POST'])
+def register():
+
+
+    data = request.get_json()
+
+
+    if "username" not in data or "password" not in data:
+        return {"message": "Missing required fields."}, 400
+
+    password_hash = hashlib.sha256(data["password"].encode()).hexdigest()
+
+
+    conn = connect_database()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+                INSERT INTO users (username, password_hash)
+                VALUES (?, ?)
+        """,(data["username"], password_hash))
+
+        conn.commit()
+
+    except sqlite3.IntegrityError:
+        conn.close()
+        return {"message": "Username already exists."}, 409
+
+    conn.close()
+
+    return {"message": "User registered successfully!"}
+
+
+
+@app.route('/login', methods=['POST'])
+def login():
+
+
+    data = request.get_json()
+
+
+    if "username" not in data or "password" not in data:
+        return {"message": "Missing required fields."}, 400
+
+
+    password_hash = hashlib.sha256(data["password"].encode()).hexdigest()
+
+
+    conn = connect_database()
+    cur = conn.cursor()
+
+
+    cur.execute("""
+        SELECT * FROM users
+        WHERE username = ? AND password_hash = ?
+    """, (data["username"], password_hash))
+
+
+    row = cur.fetchone()
+
+
+    if row is None:
+       conn.close()
+       return {"message": "Invalid username or password."}, 401
+
+
+    conn.close()
+    return {"message": "Login successful!"}
+
+
+
 @app.route('/expenses', methods=['POST'])
 def add_expense():
-    
+
     data = request.get_json()
-    
+
     if "amount" not in data or "category" not in data or "date" not in data:
         return {"message": "Missing required fields."}, 400
 
@@ -62,7 +143,7 @@ def add_expense():
     cur = conn.cursor()
     
     cur.execute("""INSERT INTO expenses (amount, category, date)
-               VALUES (?, ?, ?)""",
+                VALUES (?, ?, ?)""",
                 (data["amount"], data["category"], data["date"])
                 )
     
