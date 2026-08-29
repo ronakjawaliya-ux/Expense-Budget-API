@@ -1,15 +1,21 @@
 from flask import Flask, request
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from datetime import datetime
 import sqlite3
 import hashlib
+import os
+import secrets
 
 
 app = Flask(__name__)
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+jwt = JWTManager(app)
 
 DATABASE = "expense_budget.db"
 
 def connect_database():
     conn = sqlite3.connect(DATABASE)
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -21,13 +27,17 @@ def create_table():
                         transaction_id INTEGER PRIMARY KEY,
                         amount REAL ,
                         category TEXT ,
-                        date TEXT
+                        date TEXT,
+                        user_id INTEGER NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id)
                         )
                 """)
 
     cur.execute("""CREATE TABLE IF NOT EXISTS budget (
                         budget_id INTEGER PRIMARY KEY,
-                        amount REAL
+                        amount REAL,
+                        user_id INTEGER NOT NULL UNIQUE,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id)
                         )
                 """)
 
@@ -38,8 +48,22 @@ def create_table():
                         )
                 """)
 
+    # Support databases created before user-specific expenses and budgets.
+    expense_columns = [column[1] for column in cur.execute("PRAGMA table_info(expenses)")]
+    if "user_id" not in expense_columns:
+        cur.execute("ALTER TABLE expenses ADD COLUMN user_id INTEGER REFERENCES users(user_id)")
+
+    budget_columns = [column[1] for column in cur.execute("PRAGMA table_info(budget)")]
+    if "user_id" not in budget_columns:
+        cur.execute("ALTER TABLE budget ADD COLUMN user_id INTEGER REFERENCES users(user_id)")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_user_id ON budget(user_id)")
+
     conn.commit()
     conn.close()
+
+
+def current_user_id():
+    return int(get_jwt_identity())
 
 
 
@@ -115,12 +139,15 @@ def login():
        return {"message": "Invalid username or password."}, 401
 
 
+    user_id = row[0]
     conn.close()
-    return {"message": "Login successful!"}
+    access_token = create_access_token(identity=str(user_id))
+    return {"message": "Login successful!", "access_token": access_token}
 
 
 
 @app.route('/expenses', methods=['POST'])
+@jwt_required()
 def add_expense():
 
     data = request.get_json()
@@ -141,10 +168,11 @@ def add_expense():
 
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
     
-    cur.execute("""INSERT INTO expenses (amount, category, date)
-                VALUES (?, ?, ?)""",
-                (data["amount"], data["category"], data["date"])
+    cur.execute("""INSERT INTO expenses (amount, category, date, user_id)
+                VALUES (?, ?, ?, ?)""",
+                (data["amount"], data["category"], data["date"], user_id)
                 )
     
     conn.commit()
@@ -156,6 +184,7 @@ def add_expense():
 
 
 @app.route('/budget', methods=['POST'])
+@jwt_required()
 def set_budget():
     
     data = request.get_json()
@@ -168,21 +197,22 @@ def set_budget():
     
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
     
-    cur.execute("SELECT * FROM budget")
+    cur.execute("SELECT * FROM budget WHERE user_id = ?", (user_id,))
     row = cur.fetchone()
     
     if row is None:
         cur.execute("""
-            INSERT INTO budget (amount)
-            VALUES (?)
-        """,(data["amount"],))
+            INSERT INTO budget (amount, user_id)
+            VALUES (?, ?)
+        """,(data["amount"], user_id))
     else:
         cur.execute("""
             UPDATE budget
             SET amount = ?
-            WHERE budget_id = ?
-        """, (data["amount"], row[0]))
+            WHERE budget_id = ? AND user_id = ?
+        """, (data["amount"], row[0], user_id))
     
     conn.commit()
     conn.close()
@@ -192,6 +222,7 @@ def set_budget():
 
 
 @app.route('/expenses', methods=['GET'])
+@jwt_required()
 def get_expenses():
     
     category = request.args.get("category")
@@ -224,9 +255,10 @@ def get_expenses():
     
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
     
-    query = "SELECT * FROM expenses WHERE 1=1"
-    params = []
+    query = "SELECT * FROM expenses WHERE user_id = ?"
+    params = [user_id]
     
     if category:
         query += " AND category = ?"
@@ -263,11 +295,13 @@ def get_expenses():
 
 
 @app.route('/expenses/statistics', methods=['GET'])
+@jwt_required()
 def expense_statistics():
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
     cur.execute("""SELECT COUNT(*), SUM(amount), AVG(amount), MAX(amount), MIN(amount)
-                FROM expenses""")
+                FROM expenses WHERE user_id = ?""", (user_id,))
     
     row = cur.fetchone()
     conn.close()
@@ -282,15 +316,18 @@ def expense_statistics():
 
 
 @app.route('/expenses/category-summary', methods=['GET'])
+@jwt_required()
 def category_summary():
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
 
     cur.execute("""
         SELECT category, SUM(amount)
         FROM expenses
+        WHERE user_id = ?
         GROUP BY category
-    """)
+    """, (user_id,))
 
     rows = cur.fetchall()
     conn.close()
@@ -305,12 +342,14 @@ def category_summary():
 
 
 @app.route('/budget', methods=['GET'])
+@jwt_required()
 def get_budget():
 
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
 
-    cur.execute("""SELECT * FROM budget""")
+    cur.execute("""SELECT * FROM budget WHERE user_id = ?""", (user_id,))
     row = cur.fetchone()
 
     if row is None:
@@ -328,15 +367,18 @@ def get_budget():
 
 
 @app.route('/budget/alert', methods=['GET'])
+@jwt_required()
 def budget_alert():
     
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
     
     cur.execute("""
                 SELECT amount 
                 FROM budget
-    """)
+                WHERE user_id = ?
+    """, (user_id,))
     
     row = cur.fetchone()
     
@@ -352,7 +394,8 @@ def budget_alert():
     cur.execute("""
                 SELECT SUM(amount)
                 FROM expenses
-    """)
+                WHERE user_id = ?
+    """, (user_id,))
     
     expense_row = cur.fetchone()
     
@@ -386,6 +429,7 @@ def budget_alert():
     
     
 @app.route('/expenses/<transaction_id>', methods=['DELETE'])
+@jwt_required()
 def delete_expense(transaction_id):
 
     try:
@@ -395,8 +439,9 @@ def delete_expense(transaction_id):
     
     conn = connect_database()
     cur = conn.cursor()
+    user_id = current_user_id()
     cur.execute(
-    """SELECT * FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    """SELECT * FROM expenses WHERE transaction_id = ? AND user_id = ?""", (transaction_id, user_id))
     
     row = cur.fetchone()
     
@@ -405,7 +450,7 @@ def delete_expense(transaction_id):
         return {"message": "Expense not found."}, 404
     
     cur.execute(
-    """DELETE FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    """DELETE FROM expenses WHERE transaction_id = ? AND user_id = ?""", (transaction_id, user_id))
 
     conn.commit()
     conn.close()
@@ -415,6 +460,7 @@ def delete_expense(transaction_id):
 
 
 @app.route('/expenses/<transaction_id>', methods=['PUT'])
+@jwt_required()
 def update_expense(transaction_id):
 
     data = request.get_json()
@@ -443,7 +489,8 @@ def update_expense(transaction_id):
 
     conn = connect_database()
     cur = conn.cursor()
-    cur.execute("""SELECT * FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    user_id = current_user_id()
+    cur.execute("""SELECT * FROM expenses WHERE transaction_id = ? AND user_id = ?""", (transaction_id, user_id))
     
     row = cur.fetchone()
 
@@ -454,8 +501,8 @@ def update_expense(transaction_id):
     cur.execute("""
         UPDATE expenses
         SET amount = ?, category = ?, date = ?
-        WHERE transaction_id = ?
-    """, (data["amount"], data["category"], data["date"], transaction_id))
+        WHERE transaction_id = ? AND user_id = ?
+    """, (data["amount"], data["category"], data["date"], transaction_id, user_id))
     
     conn.commit()
     conn.close()
@@ -464,6 +511,7 @@ def update_expense(transaction_id):
 
 
 @app.route('/expenses/<transaction_id>', methods=['GET'])
+@jwt_required()
 def get_expense(transaction_id):
 
     try:
@@ -473,7 +521,8 @@ def get_expense(transaction_id):
     
     conn = connect_database()
     cur = conn.cursor()
-    cur.execute("""SELECT * FROM expenses WHERE transaction_id = ?""", (transaction_id,))
+    user_id = current_user_id()
+    cur.execute("""SELECT * FROM expenses WHERE transaction_id = ? AND user_id = ?""", (transaction_id, user_id))
     
     row = cur.fetchone()
     

@@ -1,5 +1,6 @@
 POST http://127.0.0.1:5000/expenses
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4ODAwNzMzMywianRpIjoiY2RmZTZhYjctZGE0Zi00YTczLWI1YzctNmYyMmY5MDcwMjZlIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjMiLCJuYmYiOjE3ODgwMDczMzMsImNzcmYiOiJiNDg0MDFkYi03MGVjLTQ0ZjgtODhjMS03ZGVhYTQwYjEzZTIiLCJleHAiOjE3ODgwMDgyMzN9.IhsIvc-anw5t7XSX7UKTKdX_ayZOeJph8wmfnTCphT0
 
 {
     "amount": 1200,
@@ -11,6 +12,8 @@ Content-Type: application/json
 ###
 POST http://127.0.0.1:5000/budget
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4ODAwNzMzMywianRpIjoiY2RmZTZhYjctZGE0Zi00YTczLWI1YzctNmYyMmY5MDcwMjZlIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjMiLCJuYmYiOjE3ODgwMDczMzMsImNzcmYiOiJiNDg0MDFkYi03MGVjLTQ0ZjgtODhjMS03ZGVhYTQwYjEzZTIiLCJleHAiOjE3ODgwMDgyMzN9.IhsIvc-anw5t7XSX7UKTKdX_ayZOeJph8wmfnTCphT0
+
 
 {
     "amount": 15000
@@ -22,8 +25,8 @@ POST http://127.0.0.1:5000/register
 Content-Type: application/json
 
 {
-    "username": "ronak2",
-    "password": "123456"
+    "username": "ronak_jwt",
+    "password": "test123"
 }
 
 
@@ -32,38 +35,46 @@ POST http://127.0.0.1:5000/login
 Content-Type: application/json
 
 {
-    "username": "ronak2",
-    "password": "123457"
+    "username": "ronak_jwt",
+    "password": "test123"
 }
 
 ###
-GET http://127.0.0.1:5000/expenses?min_amount=1000&max_amount=500
+GET http://127.0.0.1:5000/expenses
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4ODAwNzMzMywianRpIjoiY2RmZTZhYjctZGE0Zi00YTczLWI1YzctNmYyMmY5MDcwMjZlIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjMiLCJuYmYiOjE3ODgwMDczMzMsImNzcmYiOiJiNDg0MDFkYi03MGVjLTQ0ZjgtODhjMS03ZGVhYTQwYjEzZTIiLCJleHAiOjE3ODgwMDgyMzN9.IhsIvc-anw5t7XSX7UKTKdX_ayZOeJph8wmfnTCphT0
+
 
 
 ###
 GET http://127.0.0.1:5000/expenses/statistics
 Content-Type: application/json
+Authorization: Bearer <paste-token-from-login-here>
 
 
 ###
 GET http://127.0.0.1:5000/budget
 Content-Type: application/json
+Authorization: Bearer <paste-token-from-login-here>
 
 
 ###
 GET http://127.0.0.1:5000/budget/alert
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4ODAwNzMzMywianRpIjoiY2RmZTZhYjctZGE0Zi00YTczLWI1YzctNmYyMmY5MDcwMjZlIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjMiLCJuYmYiOjE3ODgwMDczMzMsImNzcmYiOiJiNDg0MDFkYi03MGVjLTQ0ZjgtODhjMS03ZGVhYTQwYjEzZTIiLCJleHAiOjE3ODgwMDgyMzN9.IhsIvc-anw5t7XSX7UKTKdX_ayZOeJph8wmfnTCphT0
+
 
 
 ###
 DELETE http://127.0.0.1:5000/expenses/3
 Content-Type: application/json
+Authorization: Bearer <paste-token-from-login-here>
 
 
 ###
 PUT http://127.0.0.1:5000/expenses/2
 Content-Type: application/json
+Authorization: Bearer <paste-token-from-login-here>
 
 {
     "amount": 1000,
@@ -75,3 +86,4 @@ Content-Type: application/json
 ###
 GET http://127.0.0.1:5000/expenses/2
 Content-Type: application/json
+Authorization: Bearer <paste-token-from-login-here>

@@ -2,7 +2,7 @@
 
 A RESTful Expense and Budget Management API built with Python, Flask, and SQLite.
 
-This project allows users to manage expenses, set budgets, track spending, view statistics, receive budget alerts, and register/login using password hashing.
+This project allows users to manage their own expenses and budgets, track spending, view statistics, receive budget alerts, and register/login using password hashing and JWT authentication.
 
 ## 🚀 Features
 
@@ -40,16 +40,18 @@ This project allows users to manage expenses, set budgets, track spending, view 
 - Password hashing using SHA-256
 - User login
 - Invalid username/password handling
+- JWT access tokens
+- User-specific expenses and budgets
 
 ### Testing
 - Automated testing using pytest
-- 27 tests covering API functionality
-- All tests currently passing
+- 14 automated tests covering authentication and user-data isolation
 
 ## 🛠️ Technologies Used
 
 - Python 3
 - Flask
+- Flask-JWT-Extended
 - SQLite
 - pytest
 - Git
@@ -444,12 +446,22 @@ Request:
 Successful Response:
 
 {
-    "message": "Login successful!"
+    "message": "Login successful!",
+    "access_token": "<JWT token>"
 }
 
 Status Code:
 
 200 OK
+
+## Authenticated Requests
+
+All expense and budget endpoints require the access token returned by `/login`.
+Send it in the request header:
+
+Authorization: Bearer `<JWT token>`
+
+Each expense and budget is stored for the authenticated user only. A user cannot view, update, or delete another user's records.
 
 ## Invalid Login
 
@@ -575,6 +587,10 @@ Select:
 
 Body → raw → JSON
 
+Add this header, replacing `<JWT token>` with the token returned from `/login`:
+
+Authorization: Bearer `<JWT token>`
+
 Then provide:
 
 {
@@ -594,6 +610,10 @@ python app.py
 Run tests:
 
 pytest
+
+Set a persistent JWT secret before running the application in a real environment:
+
+PowerShell: `$env:JWT_SECRET_KEY = "a-long-random-secret"`
 
 Check Git status:
 
@@ -627,16 +647,14 @@ git push
 - [x] User registration
 - [x] User login
 - [x] Password hashing
+- [x] JWT authentication
+- [x] User-specific expenses and budgets
 - [x] Automated testing
-- [x] 27 passing tests
 
 # 🔮 Future Improvements
 
 Possible future improvements include:
 
-- [ ] Token-based authentication
-- [ ] User-specific expenses
-- [ ] JWT authentication
 - [ ] Better password hashing such as bcrypt
 - [ ] Pagination
 - [ ] Sorting expenses
